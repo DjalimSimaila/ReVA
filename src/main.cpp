@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
   cv::VideoCapture cap("../b.mp4");
   if ( !cap.isOpened() )  
   {
-    std::cerr << "Cannot open the video file." << std::endl;
+    std::cerr << "il faut ../b.mp4 le sang" << std::endl;
     exit(1);
   }
 
