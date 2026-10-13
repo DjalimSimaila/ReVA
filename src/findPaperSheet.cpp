@@ -17,6 +17,7 @@ cv::Rect findPaperSheet(cv::Mat image, std::vector<cv::Rect>& rects, cv::Mat& ro
   std::vector<cv::Rect> mser_bbox;
   cv::Ptr<cv::MSER> mser = cv::MSER::create(5,40000,500000);
   mser->detectRegions(thresh, regions, mser_bbox);
+  if (regions.empty()) return cv::Rect();  // pas de feuille : évite le crash sur [0]
   cv::Rect rect = mser_bbox[0];
   std::vector<cv::Point> biggest_region = regions[0];
   
