@@ -43,9 +43,15 @@ On dit à OpenCV que ces 4 coins sont ceux d'une feuille A4 (297 × 210 mm). `so
 
 ![Carré de 100 mm dessiné sur la feuille](images/Estimation.png)
 
+
+## 4. Passage de MSER à la croissance de région
+
+Lors des tests, MSER s'est révélé un peu lent, donc nous sommes passés à une croissance de région. C'est moins précis que MSER, mais environ 4x plus rapide : 40 ms pour MSER contre 10 ms pour la croissance de région (RG).  
+En vert : MSER, en rouge : RG.
+![Comparaison](images/RGvsMSER.png)
+
 # Chantiers actuels
 
-- Passer du MSER à une croissance de région : plus de paramètres écrits en dur, et plus rapide.
 - Tester la robustesse : calibrer une nouvelle caméra et tester une nouvelle vidéo.
 - Persistance temporelle : essayer de prédire la prochaine position des points.
 - Architecture : bien ranger le code et préparer l'extension du projet vers OpenGL.
