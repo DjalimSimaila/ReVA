@@ -27,6 +27,6 @@ bool estimatePose(const std::vector<cv::Point2f>& imgPts, const CameraParams& ca
 
 // Carré vert posé sur la feuille.
 void drawBase(cv::Mat& img, const CameraParams& cam, const cv::Mat& rvec,
-              const cv::Mat& tvec, float side = 100.f);
+              const cv::Mat& tvec, float side,const cv::Scalar& color);
 
 #endif

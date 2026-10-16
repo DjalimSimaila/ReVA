@@ -1,3 +1,4 @@
+#include <opencv2/core/types.hpp>
 #include <pose.hpp>
 
 #include <algorithm>
@@ -71,12 +72,12 @@ bool estimatePose(const std::vector<cv::Point2f>& imgPts, const CameraParams& ca
 }
 
 void drawBase(cv::Mat& img, const CameraParams& cam, const cv::Mat& rvec,
-              const cv::Mat& tvec, float side) {
+              const cv::Mat& tvec, float side,const cv::Scalar& color) {
   float h = side / 2;
   std::vector<cv::Point3f> base = {{-h, -h, 0}, {h, -h, 0}, {h, h, 0}, {-h, h, 0}};
   std::vector<cv::Point2f> p;
   cv::projectPoints(base, rvec, tvec, cam.K, cam.dist, p);
 
   for (int i = 0; i < 4; ++i)
-    cv::line(img, p[i], p[(i + 1) % 4], {200, 0, 0}, 2, cv::LINE_AA);
+    cv::line(img, p[i], p[(i + 1) % 4], color, 2, cv::LINE_AA);
 }
