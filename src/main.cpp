@@ -26,16 +26,27 @@ int main(int argc, char* argv[]) {
   CameraParams cam;
   if (!loadCameraParams(camPath, cam, frameSize)) return 1;
   std::cout << "K =\n" << cam.K << "\ndist = " << cam.dist << std::endl;
+  std::cout << "Video Params : \n" << 
 
   double fps = cap.get(cv::CAP_PROP_FPS);
   int delay = fps > 0 ? (int)(1000.0 / fps) : 30;
   cv::namedWindow("A_good_name", cv::WINDOW_AUTOSIZE);
+
+  std::vector<std::vector<cv::Point>> pointHist;
+  for(int i = 0; i < 4; i++){
+    pointHist.push_back(new std::vector<Point>);
+  }
+
 
   while (true) {
     cv::Mat frame;
     if (!cap.read(frame)) {
       cap.set(cv::CAP_PROP_POS_FRAMES, 0);
       if (!cap.read(frame)) break;
+    }
+
+    if (frame.rows > 1000 || frame.cols > 1000){
+      cv::resize(frame, frame, cv::Size(), 0.5, 0.5);
     }
 
     // Croissance de région
