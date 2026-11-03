@@ -50,8 +50,17 @@ Lors des tests, MSER s'est révélé un peu lent, donc nous sommes passés à un
 En vert : MSER, en rouge : RG.
 ![Comparaison](images/RGvsMSER.png)
 
+
+## 5. Test de robustesse
+
+Nous avons testé le programme sur différentes vidéos autres que celles fournies ainsi que sur la webcam en temps réel. Les résultats sont, dans les conditions idéales, satisfaisantes. Cepedandant il existe des cas oû la detection ne se passe pas bien. Cela necessite encore un peu de travail : érosion, estimation de position.
+Il y a aussi des cas ou les axes sont inversés au milleu d'un mouvement. Nous avons pas encore trouvé la cause de ce comportement.
+![effet de bord](images/unbonquad.png)
+
+
 # Chantiers actuels
 
-- Tester la robustesse : calibrer une nouvelle caméra et tester une nouvelle vidéo.
-- Persistance temporelle : essayer de prédire la prochaine position des points.
+- Persistance temporelle : essayer de prédire la prochaine position des points (filtre de kalman).
 - Architecture : bien ranger le code et préparer l'extension du projet vers OpenGL.
+
+

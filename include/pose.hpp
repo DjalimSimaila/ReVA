@@ -1,5 +1,9 @@
 #ifndef POSE_HPP
 #define POSE_HPP
+#define LARGECONST 1000
+#define REDUCTIONFACTOR 0.5
+#define GROWTHFACTOR 2
+
 
 #include <opencv2/core.hpp>
 #include <string>
@@ -25,8 +29,10 @@ std::vector<cv::Point3f> a4ObjectPoints(float w = 297.f, float h = 210.f);
 bool estimatePose(const std::vector<cv::Point2f>& imgPts, const CameraParams& cam,
                   cv::Mat& rvec, cv::Mat& tvec, double* reprojErr = nullptr);
 
-// Carré vert posé sur la feuille.
-void drawBase(cv::Mat& img, const CameraParams& cam, const cv::Mat& rvec,
-              const cv::Mat& tvec, float side,const cv::Scalar& color);
+
+/// Dessine un cube posé sur la feuille (projection via projectPoints).
+void drawCube(cv::Mat& img, const CameraParams& cam, const cv::Mat& rvec,
+              const cv::Mat& tvec, float side = 100.f);
+
 
 #endif

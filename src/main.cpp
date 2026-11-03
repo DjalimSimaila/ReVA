@@ -10,6 +10,7 @@
 #include <utils.hpp>
 #include <pose.hpp>
 
+
 // Usage : ./CoursOpenCv [video] [camera.yaml]
 int main(int argc, char* argv[]) {
   std::string videoPath = argc > 1 ? argv[1] : "../b.mp4";
@@ -21,71 +22,88 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  cv::Mat frame;
+  cap.read(frame);
+
   cv::Size frameSize((int)cap.get(cv::CAP_PROP_FRAME_WIDTH),
-                     (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+      (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
   CameraParams cam;
   if (!loadCameraParams(camPath, cam, frameSize)) return 1;
   std::cout << "K =\n" << cam.K << "\ndist = " << cam.dist << std::endl;
-  std::cout << "Video Params : \n" << 
+  std::cout << "Video Params : \n "
+    << "width : " << frame.cols << "\n "
+    << "hight : " << frame.rows << "\n "
+    << std::endl;
+
 
   double fps = cap.get(cv::CAP_PROP_FPS);
   int delay = fps > 0 ? (int)(1000.0 / fps) : 30;
   cv::namedWindow("A_good_name", cv::WINDOW_AUTOSIZE);
 
   std::vector<std::vector<cv::Point>> pointHist;
-  for(int i = 0; i < 4; i++){
-    pointHist.push_back(new std::vector<Point>);
-  }
 
 
+  std::vector<cv::Point> quad;
+  std::vector<cv::Point> prevQuad;
   while (true) {
-    cv::Mat frame;
     if (!cap.read(frame)) {
       cap.set(cv::CAP_PROP_POS_FRAMES, 0);
       if (!cap.read(frame)) break;
     }
 
-    if (frame.rows > 1000 || frame.cols > 1000){
-      cv::resize(frame, frame, cv::Size(), 0.5, 0.5);
+    cv::Mat small;
+    if (frame.rows > LARGECONST || frame.cols > LARGECONST){
+      cv::resize(frame, frame, cv::Size(), REDUCTIONFACTOR, REDUCTIONFACTOR);
     }
 
     // Croissance de région
     cv::Point seed(frame.cols / 2, frame.rows / 2);
     cv::Mat black = growRegion(frame, seed, 30, 8);
-    
+
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(black, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
     if (!contours.empty()) {
-      
       auto biggest = *std::max_element(contours.begin(), contours.end(),
           [](auto& a, auto& b){ return cv::contourArea(a) < cv::contourArea(b); });
-      
-      std::vector<cv::Point> quad;
-      double peri = cv::arcLength(biggest, true);
+      std::vector<cv::Point> hull, quad;
+      cv::convexHull(biggest, hull);
+      double peri = cv::arcLength(hull, true);
       for (double eps = 0.02; eps <= 0.06 && quad.size() != 4; eps += 0.01)
-        cv::approxPolyDP(biggest, quad, eps * peri, true);
+        cv::approxPolyDP(hull, quad, eps * peri, true);
+       
+      cv::drawContours(frame, quad, -1,{0,255,255});
 
       if (quad.size() == 4) {
         // 1) Ordre cohérent des coins (doit correspondre aux points 3D)
         std::vector<cv::Point2f> corners = orderCorners(quad);
 
-        // 2) Pose de la feuille
+        // 2) Raffinement sub-pixel sur l'image en niveaux de gris
+        cv::Mat gray = toGrayScale(frame);
+        cv::cornerSubPix(gray, corners, cv::Size(7, 7), cv::Size(-1, -1),
+            cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 30, 0.01));
+
+        // 3) Pose de la feuille
         cv::Mat rvec, tvec;
         double err = 0;
         if (estimatePose(corners, cam, rvec, tvec, &err)) {
-          drawBase(frame, cam, rvec, tvec, 100.f,{0,0,255});
+          // drawCube(frame, cam, rvec, tvec, 100.f);
+          cv::putText(frame,
+              cv::format("dist=%.0f mm  reproj=%.2f px", cv::norm(tvec), err),
+              {10, 30}, cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 255, 255}, 2);
         }
         for (int i = 0; i < 4; ++i) {
           cv::circle(frame, corners[i], 1, cv::Scalar(0, 0, 255), cv::FILLED);
           cv::putText(frame, std::to_string(i), corners[i] + cv::Point2f(8, -8),
-                      cv::FONT_HERSHEY_SIMPLEX, 0.7, {0, 0, 255}, 2);
+              cv::FONT_HERSHEY_SIMPLEX, 0.7, {0, 0, 255}, 2);
         }
       }
     }
+    prevQuad = quad;
+    quad.clear();
 
     imshow("mask", black);
     imshow("A_good_name", frame);
-    int key = cv::waitKey(delay);
+    int key = cv::waitKey(100000);
     if (key == 27 || key == 'q') break;
     if (key == ' ') cv::waitKey(0);  // pause
   }

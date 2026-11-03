@@ -1,9 +1,9 @@
-#include <opencv2/core/types.hpp>
 #include <pose.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <numeric>
 #include <opencv2/imgproc.hpp>
 #if CV_VERSION_MAJOR >= 5
 #include <opencv2/3d.hpp>
@@ -23,34 +23,50 @@ bool loadCameraParams(const std::string& path, CameraParams& cam, cv::Size frame
   if (cam.dist.empty()) cam.dist = cv::Mat::zeros(1, 5, CV_64F);
   cam.K.convertTo(cam.K, CV_64F);
   cam.dist.convertTo(cam.dist, CV_64F);
+
+  // Le YAML est donné pour une résolution précise (ici 1280x720 : cx=640, cy=360).
+  // Si la vidéo a une autre résolution, on met K à l'échelle.
+  if (frameSize.area() > 0) {
+    double calibW = 2.0 * cam.K.at<double>(0, 2);
+    double calibH = 2.0 * cam.K.at<double>(1, 2);
+    double sx = frameSize.width / calibW, sy = frameSize.height / calibH;
+    if (std::abs(sx - 1.0) > 1e-3 || std::abs(sy - 1.0) > 1e-3) {
+      cam.K.at<double>(0, 0) *= sx;  cam.K.at<double>(0, 2) *= sx;
+      cam.K.at<double>(1, 1) *= sy;  cam.K.at<double>(1, 2) *= sy;
+    }
+  }
   return true;
 }
 
 std::vector<cv::Point2f> orderCorners(const std::vector<cv::Point>& quad) {
   std::vector<cv::Point2f> pts(quad.begin(), quad.end());
-  cv::Point2f center = (pts[0] + pts[1] + pts[2] + pts[3]) * 0.25f;
+  cv::Point2f c(0, 0);
+  for (auto& p : pts) c += p;
+  c *= 0.25f;
 
-  // Tri par angle autour du centre : sens horaire à l'écran.
-  std::sort(pts.begin(), pts.end(), [&](cv::Point2f a, cv::Point2f b) {
-    return std::atan2(a.y - center.y, a.x - center.x) <
-           std::atan2(b.y - center.y, b.x - center.x);
+  // Tri par angle autour du centre -> sens horaire à l'écran (axe y vers le bas).
+  std::sort(pts.begin(), pts.end(), [&](const cv::Point2f& a, const cv::Point2f& b) {
+    return std::atan2(a.y - c.y, a.x - c.x) < std::atan2(b.y - c.y, b.x - c.x);
   });
 
-  // Premier coin = le plus en haut à gauche.
-  auto topLeft = std::min_element(pts.begin(), pts.end(), [](cv::Point2f a, cv::Point2f b) {
-    return a.x + a.y < b.x + b.y;
-  });
-  std::rotate(pts.begin(), topLeft, pts.end());
+  // On démarre sur le coin le plus en haut à gauche (x+y minimal)...
+  int start = 0;
+  for (int i = 1; i < 4; ++i)
+    if (pts[i].x + pts[i].y < pts[start].x + pts[start].y) start = i;
+  std::rotate(pts.begin(), pts.begin() + start, pts.end());
 
-  // L'arête 0->1 doit être un grand côté (on compare les paires de côtés opposés).
-  double side01 = cv::norm(pts[1] - pts[0]) + cv::norm(pts[3] - pts[2]);
-  double side12 = cv::norm(pts[2] - pts[1]) + cv::norm(pts[0] - pts[3]);
-  if (side12 > side01) std::rotate(pts.begin(), pts.begin() + 1, pts.end());
+  // ...puis on décale d'un cran si l'arête 0->1 n'est pas un grand côté.
+  // (la somme des deux côtés opposés est plus robuste à la perspective)
+  double e01 = cv::norm(pts[1] - pts[0]) + cv::norm(pts[3] - pts[2]);
+  double e12 = cv::norm(pts[2] - pts[1]) + cv::norm(pts[0] - pts[3]);
+  if (e12 > e01) std::rotate(pts.begin(), pts.begin() + 1, pts.end());
   return pts;
 }
 
 std::vector<cv::Point3f> a4ObjectPoints(float w, float h) {
-  // Même ordre que orderCorners.
+  // Même ordre que orderCorners : horaire vu de la caméra, arête 0->1 = grand côté.
+  // Repère : origine au centre, X le long du grand côté, Y vers le "haut" de la
+  // feuille, Z = X ^ Y sort de la feuille vers la caméra.
   return {
       {-w / 2,  h / 2, 0},
       { w / 2,  h / 2, 0},
@@ -64,20 +80,37 @@ bool estimatePose(const std::vector<cv::Point2f>& imgPts, const CameraParams& ca
   if (imgPts.size() != 4) return false;
   std::vector<cv::Point3f> objPts = a4ObjectPoints();
 
-  // IPPE : solveur pour cibles planes.
-  if (!cv::solvePnP(objPts, imgPts, cam.K, cam.dist, rvec, tvec, false, cv::SOLVEPNP_IPPE))
-    return false;
+  // IPPE : solveur dédié aux cibles planes, analytique, très adapté à 4 coins.
+  bool ok = cv::solvePnP(objPts, imgPts, cam.K, cam.dist, rvec, tvec, false,
+                         cv::SOLVEPNP_IPPE);
+  if (!ok) return false;
 
+  if (reprojErr) {
+    std::vector<cv::Point2f> proj;
+    cv::projectPoints(objPts, rvec, tvec, cam.K, cam.dist, proj);
+    double e = 0;
+    for (size_t i = 0; i < proj.size(); ++i) e += cv::norm(proj[i] - imgPts[i]);
+    *reprojErr = e / proj.size();
+  }
   return tvec.at<double>(2) > 0;  // la feuille doit être devant la caméra
 }
 
-void drawBase(cv::Mat& img, const CameraParams& cam, const cv::Mat& rvec,
-              const cv::Mat& tvec, float side,const cv::Scalar& color) {
-  float h = side / 2;
-  std::vector<cv::Point3f> base = {{-h, -h, 0}, {h, -h, 0}, {h, h, 0}, {-h, h, 0}};
+void drawCube(cv::Mat& img, const CameraParams& cam, const cv::Mat& rvec,
+              const cv::Mat& tvec, float s) {
+  float h = s / 2;
+  std::vector<cv::Point3f> cube = {
+      {-h, -h, 0}, {h, -h, 0}, {h, h, 0}, {-h, h, 0},  // base sur la feuille
+      {-h, -h, s}, {h, -h, s}, {h, h, s}, {-h, h, s},  // haut (Z vers la caméra)
+  };
   std::vector<cv::Point2f> p;
-  cv::projectPoints(base, rvec, tvec, cam.K, cam.dist, p);
+  cv::projectPoints(cube, rvec, tvec, cam.K, cam.dist, p);
 
-  for (int i = 0; i < 4; ++i)
-    cv::line(img, p[i], p[(i + 1) % 4], color, 2, cv::LINE_AA);
+  const cv::Scalar base(0, 200, 0), top(255, 100, 0), pillar(0, 200, 255);
+  for (int i = 0; i < 4; ++i) {
+    cv::line(img, p[i], p[(i + 1) % 4], base, 2, cv::LINE_AA);
+    cv::line(img, p[i + 4], p[(i + 1) % 4 + 4], top, 2, cv::LINE_AA);
+    cv::line(img, p[i], p[i + 4], pillar, 2, cv::LINE_AA);
+  }
+  // Repère : X rouge, Y vert, Z bleu
+  cv::drawFrameAxes(img, cam.K, cam.dist, rvec, tvec, s * 0.8f, 3);
 }
