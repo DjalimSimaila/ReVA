@@ -58,6 +58,11 @@ Il y a aussi des cas ou les axes sont inversés au milleu d'un mouvement. Nous a
 ![effet de bord](images/unbonquad.png)
 
 
+## 6. Amélioration des performances
+
+Pour accelerer le traitement des frames, surtout en le temps réel, nous reduisons la taille des frames de moitié. Permettant un grand boost de vitesse.
+
+
 # Chantiers actuels
 
 - Persistance temporelle : essayer de prédire la prochaine position des points (filtre de kalman).

@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
         cv::Mat rvec, tvec;
         double err = 0;
         if (estimatePose(corners, cam, rvec, tvec, &err)) {
-          // drawCube(frame, cam, rvec, tvec, 100.f);
+          drawCube(frame, cam, rvec, tvec, 100.f);
           cv::putText(frame,
               cv::format("dist=%.0f mm  reproj=%.2f px", cv::norm(tvec), err),
               {10, 30}, cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 255, 255}, 2);
