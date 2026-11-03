@@ -61,7 +61,7 @@ Il y a aussi des cas ou les axes sont inversés au milleu d'un mouvement. Nous a
 ## 6. Amélioration des performances
 
 Pour accelerer le traitement des frames, surtout en le temps réel, nous reduisons la taille des frames de moitié. Permettant un grand boost de vitesse.
-
+![petiteFenetre](images/fast.png)
 
 # Chantiers actuels
 
