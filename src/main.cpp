@@ -13,7 +13,7 @@
 
 // Usage : ./CoursOpenCv [video] [camera.yaml]
 int main(int argc, char* argv[]) {
-  std::string videoPath = argc > 1 ? argv[1] : "../b.mp4";
+  std::string videoPath = argc > 1 ? argv[1] : "../videos/prof.mp4";
   std::string camPath = argc > 2 ? argv[2] : "../input_camera.yaml";
 
   cv::VideoCapture cap(videoPath);
@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
 
     imshow("mask", black);
     imshow("A_good_name", frame);
-    int key = cv::waitKey(100000);
+    int key = cv::waitKey(delay);
     if (key == 27 || key == 'q') break;
     if (key == ' ') cv::waitKey(0);  // pause
   }

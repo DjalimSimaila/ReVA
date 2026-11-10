@@ -24,17 +24,6 @@ bool loadCameraParams(const std::string& path, CameraParams& cam, cv::Size frame
   cam.K.convertTo(cam.K, CV_64F);
   cam.dist.convertTo(cam.dist, CV_64F);
 
-  // Le YAML est donné pour une résolution précise (ici 1280x720 : cx=640, cy=360).
-  // Si la vidéo a une autre résolution, on met K à l'échelle.
-  if (frameSize.area() > 0) {
-    double calibW = 2.0 * cam.K.at<double>(0, 2);
-    double calibH = 2.0 * cam.K.at<double>(1, 2);
-    double sx = frameSize.width / calibW, sy = frameSize.height / calibH;
-    if (std::abs(sx - 1.0) > 1e-3 || std::abs(sy - 1.0) > 1e-3) {
-      cam.K.at<double>(0, 0) *= sx;  cam.K.at<double>(0, 2) *= sx;
-      cam.K.at<double>(1, 1) *= sy;  cam.K.at<double>(1, 2) *= sy;
-    }
-  }
   return true;
 }
 
@@ -82,7 +71,7 @@ bool estimatePose(const std::vector<cv::Point2f>& imgPts, const CameraParams& ca
 
   // IPPE : solveur dédié aux cibles planes, analytique, très adapté à 4 coins.
   bool ok = cv::solvePnP(objPts, imgPts, cam.K, cam.dist, rvec, tvec, false,
-                         cv::SOLVEPNP_IPPE);
+                         cv::SOLVEPNP_IPPE_SQUARE);
   if (!ok) return false;
 
   if (reprojErr) {
