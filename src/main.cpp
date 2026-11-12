@@ -10,7 +10,7 @@
 #include <utils.hpp>
 #include <pose.hpp>
 
-
+//"http://10.120.19.36:4747/video",cv::CAP_FFMPEG
 // Usage : ./CoursOpenCv [video] [camera.yaml]
 int main(int argc, char* argv[]) {
   std::string videoPath = argc > 1 ? argv[1] : "../videos/prof.mp4";
@@ -24,9 +24,11 @@ int main(int argc, char* argv[]) {
 
   cv::Mat frame;
   cap.read(frame);
+  if (frame.rows > LARGECONST || frame.cols > LARGECONST)
+    cv::resize(frame, frame, cv::Size(), REDUCTIONFACTOR, REDUCTIONFACTOR);
 
-  cv::Size frameSize((int)cap.get(cv::CAP_PROP_FRAME_WIDTH),
-      (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+  // Taille des images APRÈS réduction : c'est elle que K doit décrire.
+  cv::Size frameSize = frame.size();
   CameraParams cam;
   if (!loadCameraParams(camPath, cam, frameSize)) return 1;
   std::cout << "K =\n" << cam.K << "\ndist = " << cam.dist << std::endl;
@@ -39,6 +41,9 @@ int main(int argc, char* argv[]) {
   double fps = cap.get(cv::CAP_PROP_FPS);
   int delay = fps > 0 ? (int)(1000.0 / fps) : 30;
   cv::namedWindow("A_good_name", cv::WINDOW_AUTOSIZE);
+
+  // Fenêtre OpenGL à côté de la vidéo (tout le code est dans glCube.cpp)
+  if (!glCubeInit(cam, frameSize)) return 1;
 
   std::vector<std::vector<cv::Point>> pointHist;
 
@@ -56,6 +61,9 @@ int main(int argc, char* argv[]) {
       cv::resize(frame, frame, cv::Size(), REDUCTIONFACTOR, REDUCTIONFACTOR);
     }
 
+    bool found = false;  // feuille trouvée sur cette image ?
+    cv::Mat rvec, tvec;  // sa pose (si trouvée)
+
     // Croissance de région
     cv::Point seed(frame.cols / 2, frame.rows / 2);
     cv::Mat black = growRegion(frame, seed, 30, 8);
@@ -71,7 +79,7 @@ int main(int argc, char* argv[]) {
       for (double eps = 0.02; eps <= 0.06 && quad.size() != 4; eps += 0.01)
         cv::approxPolyDP(hull, quad, eps * peri, true);
        
-      cv::drawContours(frame, quad, -1,{0,255,255});
+      cv::polylines(frame, quad, true, {0, 255, 255}, 2);  // un seul contour : polylines
 
       if (quad.size() == 4) {
         // 1) Ordre cohérent des coins (doit correspondre aux points 3D)
@@ -83,9 +91,9 @@ int main(int argc, char* argv[]) {
             cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 30, 0.01));
 
         // 3) Pose de la feuille
-        cv::Mat rvec, tvec;
         double err = 0;
-        if (estimatePose(corners, cam, rvec, tvec, &err)) {
+        found = estimatePose(corners, cam, rvec, tvec, &err);
+        if (found) {
           drawCube(frame, cam, rvec, tvec, 100.f);
           cv::putText(frame,
               cv::format("dist=%.0f mm  reproj=%.2f px", cv::norm(tvec), err),
@@ -103,9 +111,12 @@ int main(int argc, char* argv[]) {
 
     imshow("mask", black);
     imshow("A_good_name", frame);
+    if (!glCubeDraw(found, rvec, tvec)) break;  // même pose, dessinée par OpenGL
+
     int key = cv::waitKey(delay);
     if (key == 27 || key == 'q') break;
     if (key == ' ') cv::waitKey(0);  // pause
   }
+  glCubeClose();
   return 0;
 }
