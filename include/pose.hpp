@@ -1,7 +1,7 @@
 #ifndef POSE_HPP
 #define POSE_HPP
 #define LARGECONST 1000
-#define REDUCTIONFACTOR 0.5
+#define REDUCTIONFACTOR 0.25
 #define GROWTHFACTOR 2
 
 

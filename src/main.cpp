@@ -1,3 +1,4 @@
+#include "prediction.hpp"
 #include <iostream>
 #include <opencv2/core.hpp>
 #include <opencv2/core/types.hpp>
@@ -6,6 +7,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/features2d.hpp>
 #include <opencv2/videoio.hpp>
+#include <opencv2/video/tracking.hpp>
 #include <vector>
 #include <utils.hpp>
 #include <pose.hpp>
@@ -16,7 +18,11 @@ int main(int argc, char* argv[]) {
   std::string videoPath = argc > 1 ? argv[1] : "../videos/prof.mp4";
   std::string camPath = argc > 2 ? argv[2] : "../input_camera.yaml";
 
-  cv::VideoCapture cap(videoPath);
+  std::vector<PointPredictor> pf(4);
+  std::vector<cv::Point2f> predictedPosition(4);
+
+  // cv::VideoCapture cap("http://10.109.45.183:4747/video",cv::CAP_FFMPEG
+  cv::VideoCapture cap(0);
   if (!cap.isOpened()) {
     std::cerr << "il faut " << videoPath << " le sang" << std::endl;
     return 1;
@@ -49,6 +55,7 @@ int main(int argc, char* argv[]) {
 
   std::vector<cv::Point> quad;
   std::vector<cv::Point> prevQuad;
+  cv::Point seed(frame.cols / 2, frame.rows / 2);
   while (true) {
     if (!cap.read(frame)) {
       cap.set(cv::CAP_PROP_POS_FRAMES, 0);
@@ -64,7 +71,6 @@ int main(int argc, char* argv[]) {
     cv::Mat rvec, tvec;  // sa pose (si trouvée)
 
     // Croissance de région
-    cv::Point seed(frame.cols / 2, frame.rows / 2);
     cv::Mat black = growRegion(frame, seed, 30, 8);
 
     std::vector<std::vector<cv::Point>> contours;
@@ -77,13 +83,21 @@ int main(int argc, char* argv[]) {
       double peri = cv::arcLength(hull, true);
       for (double eps = 0.02; eps <= 0.06 && quad.size() != 4; eps += 0.01)
         cv::approxPolyDP(hull, quad, eps * peri, true);
-       
-      cv::polylines(frame, quad, true, {0, 255, 255}, 2);  // un seul contour : polylines
+
+      // cv::polylines(frame, quad, true, {0, 255, 255}, 2);  // un seul contour : polylines
+      cv::drawContours(frame, quad, -1,{0,255,255});
 
       if (quad.size() == 4) {
         // 1) Ordre cohérent des coins (doit correspondre aux points 3D)
         std::vector<cv::Point2f> corners = orderCorners(quad);
 
+        seed = cv::Point2f((quad[0].x + quad[2].x)/ 2, (quad[0].y + quad[2].y)/2);
+
+        for(int i = 0; i < 4; i++){
+          predictedPosition[i] = pf[i].predict();
+          cv::Mat measurement = (cv::Mat_<float>(2, 1) << corners[i].x, corners[i].y);
+          pf[i].correct(measurement);
+        }
         // 2) Raffinement sub-pixel sur l'image en niveaux de gris
         cv::Mat gray = toGrayScale(frame);
         cv::cornerSubPix(gray, corners, cv::Size(7, 7), cv::Size(-1, -1),
@@ -99,12 +113,14 @@ int main(int argc, char* argv[]) {
               {10, 30}, cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 255, 255}, 2);
         }
         for (int i = 0; i < 4; ++i) {
+          cv::circle(frame, predictedPosition[i], 2, cv::Scalar(0, 255, 0), -1); // Predicted position in green
           cv::circle(frame, corners[i], 1, cv::Scalar(0, 0, 255), cv::FILLED);
           cv::putText(frame, std::to_string(i), corners[i] + cv::Point2f(8, -8),
               cv::FONT_HERSHEY_SIMPLEX, 0.7, {0, 0, 255}, 2);
         }
       }
     }
+    cv::circle(frame, seed, 10, cv::Scalar(255, 255, 0), -1); // Predicted position in green
     prevQuad = quad;
     quad.clear();
 

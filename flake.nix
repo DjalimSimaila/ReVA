@@ -21,7 +21,7 @@
             glfw
             glm
             nlohmann_json
-            libGL
+            libglvnd
             libGLU
             libx11
             libxrandr
@@ -49,6 +49,7 @@
             CMAKE_EXPORT_COMPILE_COMMANDS = "1";
 
             shellHook = ''
+              export CMAKE_PREFIX_PATH="${pkgs.libglvnd.dev}:${pkgs.libglvnd.out}:''${CMAKE_PREFIX_PATH:-}"
               # nix develop met `-rpath $PWD/outputs/out/lib` dans NIX_LDFLAGS: casse l'édition
               # de liens quand le chemin contient des espaces (ex: "Cours 5e année")
               export NIX_LDFLAGS="''${NIX_LDFLAGS/-rpath $out\/lib/}"
