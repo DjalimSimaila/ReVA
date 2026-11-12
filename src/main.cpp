@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
   std::vector<cv::Point2f> predictedPosition(4);
 
   // cv::VideoCapture cap("http://10.109.45.183:4747/video",cv::CAP_FFMPEG
-  cv::VideoCapture cap(0);
+  cv::VideoCapture cap("/dev/video9");
   if (!cap.isOpened()) {
     std::cerr << "il faut " << videoPath << " le sang" << std::endl;
     return 1;
@@ -75,6 +75,7 @@ int main(int argc, char* argv[]) {
 
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(black, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    
     if (!contours.empty()) {
       auto biggest = *std::max_element(contours.begin(), contours.end(),
           [](auto& a, auto& b){ return cv::contourArea(a) < cv::contourArea(b); });

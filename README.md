@@ -63,9 +63,33 @@ Il y a aussi des cas ou les axes sont inversés au milleu d'un mouvement. Nous a
 Pour accelerer le traitement des frames, surtout en le temps réel, nous reduisons la taille des frames de moitié. Permettant un grand boost de vitesse.
 ![petiteFenetre](images/fast.png)
 
+
+## 7. Passage à la 3D
+
+Nous avons implémenté un affichage basique d’un cube à partir du plan obtenu avec OpenCV.
+![3d](images/LeDebutDeLa3d.png)
+
+## 8. Filtre de Kalman
+
+Nous avons ajouté un filtre de Kalman qui suit les points du quadrilatère détecté et permettra dans le futur de lisser leurs positions.
+![points verts](images/kalman.webm)
+
+
+## 9. Création d’une architecture propre
+
+Nous avons commencé à segmenter le projet en plusieurs classes afin de séparer les fonctionnalités et de rendre le code plus lisible et plus facile à déboguer.
+
+
 # Chantiers actuels
 
-- Persistance temporelle : essayer de prédire la prochaine position des points (filtre de kalman).
 - Architecture : bien ranger le code et préparer l'extension du projet vers OpenGL.
+- Moteur de jeu :
+   - Physique, detection de l'inclinaison
+   - Gestion des maps et des musiques
+   - systeme de point et de pv
+   - affichage (jeu,ui,etc...)
+- Lissage : Limiter les tremblements
+- Retour dans le casque 
+- Passthrough : Voir le jeu superposé a la réalité
 
 
