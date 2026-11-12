@@ -72,7 +72,9 @@ Nous avons implémenté un affichage basique d’un cube à partir du plan obten
 ## 8. Filtre de Kalman
 
 Nous avons ajouté un filtre de Kalman qui suit les points du quadrilatère détecté et permettra dans le futur de lisser leurs positions.
-![points verts](images/kalman.mp4)
+<video src="https://github.com/DjalimSimaila/ReVA/raw/main/images/kalman.mp4" controls muted loop width="640"></video>
+
+[Voir la vidéo](images/kalman.mp4)
 
 
 ## 9. Création d’une architecture propre

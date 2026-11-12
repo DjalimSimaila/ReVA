@@ -1,6 +1,6 @@
 build**
 .cache**
-**.mp4
+videos/**.mp4
 Calibration/images/**
 calibrate
 **.yaml
