@@ -42,7 +42,6 @@ int main(int argc, char* argv[]) {
   int delay = fps > 0 ? (int)(1000.0 / fps) : 30;
   cv::namedWindow("A_good_name", cv::WINDOW_AUTOSIZE);
 
-  // Fenêtre OpenGL à côté de la vidéo (tout le code est dans glCube.cpp)
   if (!glCubeInit(cam, frameSize)) return 1;
 
   std::vector<std::vector<cv::Point>> pointHist;
@@ -111,7 +110,7 @@ int main(int argc, char* argv[]) {
 
     imshow("mask", black);
     imshow("A_good_name", frame);
-    if (!glCubeDraw(found, rvec, tvec)) break;  // même pose, dessinée par OpenGL
+    if (!glCubeDraw(found, rvec, tvec)) break;  
 
     int key = cv::waitKey(delay);
     if (key == 27 || key == 'q') break;

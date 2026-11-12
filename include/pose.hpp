@@ -34,5 +34,8 @@ bool estimatePose(const std::vector<cv::Point2f>& imgPts, const CameraParams& ca
 void drawCube(cv::Mat& img, const CameraParams& cam, const cv::Mat& rvec,
               const cv::Mat& tvec, float side = 100.f);
 
+bool glCubeInit(const CameraParams& cam, cv::Size size);
+bool glCubeDraw(bool found, const cv::Mat& rvec, const cv::Mat& tvec);
+void glCubeClose();
 
 #endif
